@@ -75,6 +75,22 @@ fun sampleProduct(): ProductUi {
     )
 }
 
+fun sampleProductOutOfStock(): ProductUi {
+    return ProductUi(
+        title = "Casque Audio Pulse",
+        brand = "SoundPeak",
+        category = "Audio",
+        description = "Un casque confortable conçu pour écouter de la musique, " +
+                "suivre des cours en ligne et travailler dans de bonnes conditions.",
+        price = 129.99,
+        discountPercentage = 8.0,
+        rating = 4.2,
+        stock = 0,
+        warrantyInformation = "Garantie constructeur : 1 an",
+        shippingInformation = "Produit temporairement indisponible"
+    )
+}
+
 @Composable
 fun ProductDetailScreen(
     product: ProductUi,
@@ -125,9 +141,12 @@ fun ProductDetailScreen(
                 .fillMaxWidth()
                 .padding(top = 16.dp)
         )
-        Button(onClick = onAddToCartClick) {
-            Text(text = "Ajouter au panier")
-        }
+        AddToCartButton(
+            onClick = onAddToCartClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        )
     }
 }
 
@@ -265,6 +284,19 @@ fun ProductWarrantyField(
     )
 }
 
+@Composable
+fun AddToCartButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Text(text = "Ajouter au panier")
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun ProductDetailScreenPreview() {
@@ -275,3 +307,15 @@ fun ProductDetailScreenPreview() {
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun ProductDetailScreenOutOfStockPreview() {
+    ProductExplorerTheme {
+        ProductDetailScreen(
+            product = sampleProductOutOfStock(),
+            onAddToCartClick = {}
+        )
+    }
+}
+
