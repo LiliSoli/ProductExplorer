@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -310,6 +311,13 @@ fun ProductHomeScreen(
     ) {
         HomeHeader()
         Spacer(modifier = Modifier.height(24.dp))
+        SearchPreviewBar()
+        Spacer(modifier = Modifier.height(24.dp))
+        FeaturedProductSection(
+            product = featuredProduct,
+            onClick = onFeaturedProductClick
+        )
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -325,6 +333,87 @@ fun HomeHeader(
         Text(
             text = "Découvrez les produits du moment",
             style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+fun SearchPreviewBar(
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp
+    ) {
+        Text(
+            text = "Rechercher un produit...",
+            modifier = Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+fun FeaturedProductSection(
+    product: ProductUi,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        tonalElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Produit mis en avant",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = product.title,
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Text(
+                text = product.brand,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            ProductQuickInfoRow(
+                price = product.price,
+                rating = product.rating,
+                stock = product.stock
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = onClick) {
+                Text(text = "Voir le produit")
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductQuickInfoRow(
+    price: Double,
+    rating: Double,
+    stock: Int,
+    modifier: Modifier = Modifier
+) {
+    Row(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "$price €",
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "★ $rating",
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "$stock en stock",
+            modifier = Modifier.weight(1f)
         )
     }
 }
