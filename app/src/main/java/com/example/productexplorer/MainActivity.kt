@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -83,6 +84,10 @@ fun sampleProduct(): ProductUi {
         warrantyInformation = "Garantie constructeur : 2 ans",
         shippingInformation = "Livraison estimée : 3 à 5 jours ouvrés"
     )
+}
+
+fun sampleCategories(): List<String> {
+    return listOf("Smartphones", "Audio", "Wearables", "Maison")
 }
 
 fun sampleProductOutOfStock(): ProductUi {
@@ -495,6 +500,21 @@ fun CategoryChip(
 }
 
 @Composable
+fun CategoryRow(
+    categories: List<String>,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(categories) { category ->
+            CategoryChip(label = category)
+        }
+    }
+}
+
+@Composable
 fun CategoriesSection(
     modifier: Modifier = Modifier
 ) {
@@ -571,6 +591,15 @@ fun ProductCatalogScreen(
                 text = "Catalogue produits",
                 style = MaterialTheme.typography.headlineMedium
             )
+        }
+        item {
+            Text(
+                text = "Explorez une sélection de produits disponibles localement.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        item {
+            CategoryRow(categories = sampleCategories())
         }
         items(
             items = products,
@@ -649,4 +678,16 @@ fun ProductHomeScreenPreview() {
         )
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun ProductCatalogScreenPreview() {
+    ProductExplorerTheme {
+        ProductCatalogScreen(
+            products = sampleProducts(),
+            onProductClick = {}
+        )
+    }
+}
+
 
