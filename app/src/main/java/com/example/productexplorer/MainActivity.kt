@@ -820,3 +820,21 @@ fun ProductCatalogContainerLightPreview() {
     }
 }
 
+@Preview(showBackground = true, name = "Catalogue - Stateless")
+@Composable
+fun ProductCatalogScreenStatelessPreview() {
+    ProductExplorerTheme {
+        ProductCatalogScreen(
+            products = sampleProducts(),
+            categories = sampleCategories(),
+            searchQuery = "",
+            onSearchQueryChange = {},
+            showOnlyInStock = false,
+            onToggleStockFilter = {},
+            favoriteProductIds = listOf(1),
+            onFavoriteClick = {},
+            onProductClick = {}
+        )
+    }
+}
+
