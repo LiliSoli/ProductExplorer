@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.example.productexplorer.ui.theme.ProductExplorerTheme
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -632,6 +633,15 @@ class ProductCatalogViewModel : ViewModel() {
             matchesSearch && matchesStock && matchesCategory
         }
 
+    val hasActiveFilters: Boolean
+        get() = searchQuery.isNotEmpty() || showOnlyInStock || selectedCategory != null
+
+
+    fun onResetFilters() {
+        searchQuery = ""
+        showOnlyInStock = false
+        selectedCategory = null
+    }
     fun onSearchQueryChange(newValue: String) {
         searchQuery = newValue
     }
@@ -668,6 +678,8 @@ fun ProductCatalogContainer(
         onToggleStockFilter = viewModel::onToggleStockFilter,
         selectedCategory = viewModel.selectedCategory,
         onCategoryClick = viewModel::onCategoryClick,
+        hasActiveFilters = viewModel.hasActiveFilters,
+        onResetFilters = viewModel::onResetFilters,
         favoriteProductIds = viewModel.favoriteProductIds,
         onFavoriteClick = viewModel::onFavoriteClick,
         onProductClick = onProductClick,
@@ -685,6 +697,8 @@ fun ProductCatalogScreen(
     onToggleStockFilter: () -> Unit,
     selectedCategory: String?,
     onCategoryClick: (String) -> Unit,
+    hasActiveFilters: Boolean,
+    onResetFilters: () -> Unit,
     favoriteProductIds: List<Int>,
     onFavoriteClick: (Int) -> Unit,
     onProductClick: (ProductUi) -> Unit,
@@ -737,6 +751,14 @@ fun ProductCatalogScreen(
                 selectedCategory = selectedCategory,
                 onCategoryClick = onCategoryClick
             )
+        }
+        item {
+            OutlinedButton(
+                onClick = onResetFilters,
+                enabled = hasActiveFilters
+            ) {
+                Text(text = "Réinitialiser les filtres")
+            }
         }
         item {
             Text(
@@ -858,6 +880,8 @@ fun ProductCatalogScreenLightPreview() {
             onToggleStockFilter = {},
             selectedCategory = null,
             onCategoryClick = {},
+            hasActiveFilters = false,
+            onResetFilters = {},
             favoriteProductIds = listOf(1),
             onFavoriteClick = {},
             onProductClick = {}
@@ -881,6 +905,8 @@ fun ProductCatalogScreenDarkPreview() {
             onToggleStockFilter = {},
             selectedCategory = "Audio",
             onCategoryClick = {},
+            hasActiveFilters = true,
+            onResetFilters = {},
             favoriteProductIds = listOf(2),
             onFavoriteClick = {},
             onProductClick = {}
