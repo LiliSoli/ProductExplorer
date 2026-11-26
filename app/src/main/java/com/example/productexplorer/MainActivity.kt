@@ -492,13 +492,24 @@ fun ProductQuickInfoRow(
 @Composable
 fun CategoryChip(
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSelected: Boolean = false,
+    onClick: () -> Unit = {}
 ) {
     Surface(
+        onClick = onClick,
         modifier = modifier,
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.secondary,
-        contentColor = MaterialTheme.colorScheme.onPrimary
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.secondary
+        },
+        contentColor = if (isSelected) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSecondary
+        }
     ) {
         Text(
             text = label,
@@ -511,14 +522,20 @@ fun CategoryChip(
 @Composable
 fun CategoryRow(
     categories: List<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedCategory: String? = null,
+    onCategoryClick: (String) -> Unit = {}
 ) {
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(categories) { category ->
-            CategoryChip(label = category)
+            CategoryChip(
+                label = category,
+                isSelected = category == selectedCategory,
+                onClick = { onCategoryClick(category) }
+            )
         }
     }
 }
@@ -600,14 +617,18 @@ fun ProductCatalogContainer(
     var favoriteProductIds by rememberSaveable {
         mutableStateOf(listOf<Int>())
     }
-    val filteredProducts = remember(products, searchQuery, showOnlyInStock) {
+    var selectedCategory by rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+    val filteredProducts = remember(products, searchQuery, showOnlyInStock, selectedCategory) {
         products.filter { product ->
             val matchesSearch =
                 product.title.contains(searchQuery, ignoreCase = true) ||
                         product.brand.contains(searchQuery, ignoreCase = true) ||
                         product.category.contains(searchQuery, ignoreCase = true)
             val matchesStock = !showOnlyInStock || product.stock > 0
-            matchesSearch && matchesStock
+            val matchesCategory = selectedCategory == null || product.category == selectedCategory
+            matchesSearch && matchesStock && matchesCategory
         }
     }
     fun toggleFavorite(productId: Int) {
@@ -624,6 +645,10 @@ fun ProductCatalogContainer(
         onSearchQueryChange = { newValue -> searchQuery = newValue },
         showOnlyInStock = showOnlyInStock,
         onToggleStockFilter = { showOnlyInStock = !showOnlyInStock },
+        selectedCategory = selectedCategory,
+        onCategoryClick = { category ->
+            selectedCategory = if (selectedCategory == category) null else category
+        },
         favoriteProductIds = favoriteProductIds,
         onFavoriteClick = { productId -> toggleFavorite(productId) },
         onProductClick = onProductClick,
@@ -639,6 +664,8 @@ fun ProductCatalogScreen(
     onSearchQueryChange: (String) -> Unit,
     showOnlyInStock: Boolean,
     onToggleStockFilter: () -> Unit,
+    selectedCategory: String?,
+    onCategoryClick: (String) -> Unit,
     favoriteProductIds: List<Int>,
     onFavoriteClick: (Int) -> Unit,
     onProductClick: (ProductUi) -> Unit,
@@ -662,7 +689,8 @@ fun ProductCatalogScreen(
         item {
             Text(
                 text = "Explorez une sélection de produits disponibles localement.",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         item {
@@ -685,12 +713,17 @@ fun ProductCatalogScreen(
             }
         }
         item {
-            CategoryRow(categories = categories)
+            CategoryRow(
+                categories = categories,
+                selectedCategory = selectedCategory,
+                onCategoryClick = onCategoryClick
+            )
         }
         item {
             Text(
                 text = "${products.size} produit(s) affiché(s)",
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         items(
@@ -831,6 +864,8 @@ fun ProductCatalogScreenStatelessPreview() {
             onSearchQueryChange = {},
             showOnlyInStock = false,
             onToggleStockFilter = {},
+            selectedCategory = "Audio",
+            onCategoryClick = {},
             favoriteProductIds = listOf(1),
             onFavoriteClick = {},
             onProductClick = {}
