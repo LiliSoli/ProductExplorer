@@ -37,6 +37,11 @@ import androidx.compose.ui.unit.dp
 import com.example.productexplorer.ui.theme.ProductExplorerTheme
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -584,6 +589,23 @@ fun ProductCatalogScreen(
     onProductClick: (ProductUi) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var searchQuery by rememberSaveable {
+        mutableStateOf("")
+    }
+    var showOnlyInStock by rememberSaveable {
+        mutableStateOf(false)
+    }
+    val filteredProducts = remember(products, searchQuery, showOnlyInStock) {
+        products.filter { product ->
+            val matchesSearch =
+                product.title.contains(searchQuery, ignoreCase = true) ||
+                        product.brand.contains(searchQuery, ignoreCase = true) ||
+                        product.category.contains(searchQuery, ignoreCase = true)
+            val matchesStock = !showOnlyInStock || product.stock > 0
+            matchesSearch && matchesStock
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -605,10 +627,37 @@ fun ProductCatalogScreen(
             )
         }
         item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { newValue ->
+                    searchQuery = newValue
+                },
+                label = {
+                    Text(text = "Rechercher un produit")
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            Button(
+                onClick = {
+                    showOnlyInStock = !showOnlyInStock
+                }
+            ) {
+                Text(
+                    text = if (showOnlyInStock) {
+                        "Afficher tous les produits"
+                    } else {
+                        "Afficher uniquement les produits en stock"
+                    }
+                )
+            }
+        }
+        item {
             CategoryRow(categories = sampleCategories())
         }
         items(
-            items = products,
+            items = filteredProducts,
             key = { product -> product.id }
         ) { product ->
             ProductListItem(
