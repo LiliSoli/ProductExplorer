@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Button
@@ -216,6 +217,7 @@ fun ProductDetailScreen(
         )
         AddToCartButton(
             onClick = onAddToCartClick,
+            isAvailable = product.stock > 0,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp)
@@ -360,13 +362,15 @@ fun ProductWarrantyField(
 @Composable
 fun AddToCartButton(
     onClick: () -> Unit,
+    isAvailable: Boolean,
     modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
+        enabled = isAvailable,
         modifier = modifier
     ) {
-        Text(text = "Ajouter au panier")
+        Text(text = if (isAvailable) "Ajouter au panier" else "Indisponible")
     }
 }
 
@@ -435,36 +439,54 @@ fun FeaturedProductSection(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    Box(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 4.dp
         ) {
-            Text(
-                text = "Produit mis en avant",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = product.title,
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Text(
-                text = product.brand,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            ProductQuickInfoRow(
-                price = product.price,
-                rating = product.rating,
-                stock = product.stock
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = onClick) {
-                Text(text = "Voir le produit")
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Produit mis en avant",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = product.title,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = product.brand,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ProductQuickInfoRow(
+                    price = product.price,
+                    rating = product.rating,
+                    stock = product.stock
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onClick) {
+                    Text(text = "Voir le produit")
+                }
+            }
+        }
+        if (product.discountPercentage > 0) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary
+            ) {
+                Text(
+                    text = "-${product.discountPercentage.toInt()} %",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
         }
     }
@@ -539,6 +561,59 @@ fun CategoryRow(
                 label = category,
                 isSelected = category == selectedCategory,
                 onClick = { onCategoryClick(category) }
+            )
+        }
+    }
+}
+
+@Composable
+fun TopRatedSection(
+    products: List<ProductUi>,
+    modifier: Modifier = Modifier
+) {
+    if (products.isNotEmpty()) {
+        Column(modifier = modifier) {
+            Text(
+                text = "Les mieux notés",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(
+                    items = products,
+                    key = { product -> product.id }
+                ) { product ->
+                    TopRatedProductCard(product = product)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TopRatedProductCard(
+    product: ProductUi,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.width(160.dp),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = product.title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1
+            )
+            Text(
+                text = "★ ${product.rating}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+            Text(
+                text = "${product.price} €",
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -800,9 +875,16 @@ fun ProductCatalogScreen(
         }
         item {
             Text(
-                text = "Explorez une sélection de produits disponibles localement.",
+                text = "Explorez une sélection de produits disponibles",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        item {
+            TopRatedSection(
+                products = products
+                    .filter { it.rating >= 4.4 }
+                    .sortedByDescending { it.rating }
             )
         }
         item {
@@ -910,7 +992,7 @@ fun ProductListItem(
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                         contentDescription = if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
