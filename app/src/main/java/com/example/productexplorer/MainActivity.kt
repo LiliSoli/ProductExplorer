@@ -216,6 +216,7 @@ fun ProductDetailScreen(
         )
         AddToCartButton(
             onClick = onAddToCartClick,
+            isAvailable = product.stock > 0,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp)
@@ -360,13 +361,15 @@ fun ProductWarrantyField(
 @Composable
 fun AddToCartButton(
     onClick: () -> Unit,
+    isAvailable: Boolean,
     modifier: Modifier = Modifier
 ) {
     Button(
         onClick = onClick,
+        enabled = isAvailable,
         modifier = modifier
     ) {
-        Text(text = "Ajouter au panier")
+        Text(text = if (isAvailable) "Ajouter au panier" else "Indisponible")
     }
 }
 
