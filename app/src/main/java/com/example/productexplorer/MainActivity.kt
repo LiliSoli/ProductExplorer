@@ -479,8 +479,8 @@ fun FeaturedProductSection(
                     .align(Alignment.TopEnd)
                     .padding(8.dp),
                 shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                color = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary
             ) {
                 Text(
                     text = "-${product.discountPercentage.toInt()} %",
@@ -609,7 +609,7 @@ fun TopRatedProductCard(
             Text(
                 text = "★ ${product.rating}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.tertiary
             )
             Text(
                 text = "${product.price} €",
@@ -992,7 +992,7 @@ fun ProductListItem(
                     Icon(
                         imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
                         contentDescription = if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.tertiary
                     )
                 }
             }
