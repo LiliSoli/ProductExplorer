@@ -43,6 +43,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -600,10 +603,48 @@ fun DailyOfferBox(
     }
 }
 
+data class ProductCatalogUiState(
+    val products: List<ProductUi> = emptyList(),
+    val categories: List<String> = emptyList(),
+    val searchQuery: String = "",
+    val showOnlyInStock: Boolean = false,
+    val selectedCategory: String? = null,
+    val hasActiveFilters: Boolean = false,
+    val favoriteProductIds: List<Int> = emptyList()
+)
+
 class ProductCatalogViewModel : ViewModel() {
 
     private val allProducts: List<ProductUi> = sampleProducts()
     val categories: List<String> = sampleCategories()
+
+    private val allCategories: List<String> = sampleCategories()
+
+    private val _uiState = MutableStateFlow(
+        ProductCatalogUiState(
+            products = allProducts,
+            categories = allCategories
+        )
+    )
+    val uiState: StateFlow<ProductCatalogUiState> = _uiState.asStateFlow()
+
+    private fun filterProducts(
+        searchQuery: String,
+        showOnlyInStock: Boolean,
+        selectedCategory: String?
+    ): List<ProductUi> {
+        return allProducts.filter { product ->
+            val matchesSearch =
+                product.title.contains(searchQuery, ignoreCase = true) ||
+                        product.brand.contains(searchQuery, ignoreCase = true) ||
+                        product.category.contains(searchQuery, ignoreCase = true)
+            val matchesStock =
+                !showOnlyInStock || product.stock > 0
+            val matchesCategory =
+                selectedCategory == null || product.category == selectedCategory
+            matchesSearch && matchesStock && matchesCategory
+        }
+    }
 
     var searchQuery by mutableStateOf("")
         private set
