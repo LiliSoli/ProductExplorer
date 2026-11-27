@@ -438,36 +438,54 @@ fun FeaturedProductSection(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    Box(modifier = modifier.fillMaxWidth()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 4.dp
         ) {
-            Text(
-                text = "Produit mis en avant",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = product.title,
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Text(
-                text = product.brand,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            ProductQuickInfoRow(
-                price = product.price,
-                rating = product.rating,
-                stock = product.stock
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(onClick = onClick) {
-                Text(text = "Voir le produit")
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Produit mis en avant",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = product.title,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = product.brand,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ProductQuickInfoRow(
+                    price = product.price,
+                    rating = product.rating,
+                    stock = product.stock
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onClick) {
+                    Text(text = "Voir le produit")
+                }
+            }
+        }
+        if (product.discountPercentage > 0) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Text(
+                    text = "-${product.discountPercentage.toInt()} %",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
         }
     }
