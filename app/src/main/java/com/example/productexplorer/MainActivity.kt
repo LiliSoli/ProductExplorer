@@ -603,6 +603,8 @@ fun DailyOfferBox(
     }
 }
 
+enum class SortOrder { NONE, PRICE_ASC, PRICE_DESC }
+
 data class ProductCatalogUiState(
     val products: List<ProductUi> = emptyList(),
     val categories: List<String> = emptyList(),
@@ -610,7 +612,9 @@ data class ProductCatalogUiState(
     val showOnlyInStock: Boolean = false,
     val selectedCategory: String? = null,
     val hasActiveFilters: Boolean = false,
-    val favoriteProductIds: List<Int> = emptyList()
+    val favoriteProductIds: List<Int> = emptyList(),
+    val showOnlyFavorites: Boolean = false,
+    val sortOrder: SortOrder = SortOrder.NONE
 )
 
 class ProductCatalogViewModel : ViewModel() {
@@ -626,66 +630,51 @@ class ProductCatalogViewModel : ViewModel() {
     )
     val uiState: StateFlow<ProductCatalogUiState> = _uiState.asStateFlow()
 
-    private fun filterProducts(
-        searchQuery: String,
-        showOnlyInStock: Boolean,
-        selectedCategory: String?
-    ): List<ProductUi> {
-        return allProducts.filter { product ->
+    private fun filterProducts(state: ProductCatalogUiState): List<ProductUi> {
+        val filtered = allProducts.filter { product ->
             val matchesSearch =
-                product.title.contains(searchQuery, ignoreCase = true) ||
-                        product.brand.contains(searchQuery, ignoreCase = true) ||
-                        product.category.contains(searchQuery, ignoreCase = true)
+                product.title.contains(state.searchQuery, ignoreCase = true) ||
+                        product.brand.contains(state.searchQuery, ignoreCase = true) ||
+                        product.category.contains(state.searchQuery, ignoreCase = true)
             val matchesStock =
-                !showOnlyInStock || product.stock > 0
+                !state.showOnlyInStock || product.stock > 0
             val matchesCategory =
-                selectedCategory == null || product.category == selectedCategory
-            matchesSearch && matchesStock && matchesCategory
+                state.selectedCategory == null || product.category == state.selectedCategory
+            val matchesFavorite =
+                !state.showOnlyFavorites || state.favoriteProductIds.contains(product.id)
+            matchesSearch && matchesStock && matchesCategory && matchesFavorite
+        }
+        return when (state.sortOrder) {
+            SortOrder.NONE -> filtered
+            SortOrder.PRICE_ASC -> filtered.sortedBy { it.price }
+            SortOrder.PRICE_DESC -> filtered.sortedByDescending { it.price }
         }
     }
 
-    private fun hasActiveFilters(
-        searchQuery: String,
-        showOnlyInStock: Boolean,
-        selectedCategory: String?
-    ): Boolean {
-        return searchQuery.isNotEmpty() || showOnlyInStock || selectedCategory != null
+    private fun hasActiveFilters(state: ProductCatalogUiState): Boolean {
+        return state.searchQuery.isNotEmpty() ||
+                state.showOnlyInStock ||
+                state.selectedCategory != null ||
+                state.showOnlyFavorites ||
+                state.sortOrder != SortOrder.NONE
+    }
+
+    private fun withUpdatedProducts(state: ProductCatalogUiState): ProductCatalogUiState {
+        return state.copy(
+            products = filterProducts(state),
+            hasActiveFilters = hasActiveFilters(state)
+        )
     }
 
     fun onSearchQueryChange(newValue: String) {
         _uiState.update { currentState ->
-            currentState.copy(
-                searchQuery = newValue,
-                products = filterProducts(
-                    searchQuery = newValue,
-                    showOnlyInStock = currentState.showOnlyInStock,
-                    selectedCategory = currentState.selectedCategory
-                ),
-                hasActiveFilters = hasActiveFilters(
-                    searchQuery = newValue,
-                    showOnlyInStock = currentState.showOnlyInStock,
-                    selectedCategory = currentState.selectedCategory
-                )
-            )
+            withUpdatedProducts(currentState.copy(searchQuery = newValue))
         }
     }
 
     fun onToggleStockFilter() {
         _uiState.update { currentState ->
-            val newShowOnlyInStock = !currentState.showOnlyInStock
-            currentState.copy(
-                showOnlyInStock = newShowOnlyInStock,
-                products = filterProducts(
-                    searchQuery = currentState.searchQuery,
-                    showOnlyInStock = newShowOnlyInStock,
-                    selectedCategory = currentState.selectedCategory
-                ),
-                hasActiveFilters = hasActiveFilters(
-                    searchQuery = currentState.searchQuery,
-                    showOnlyInStock = newShowOnlyInStock,
-                    selectedCategory = currentState.selectedCategory
-                )
-            )
+            withUpdatedProducts(currentState.copy(showOnlyInStock = !currentState.showOnlyInStock))
         }
     }
 
@@ -693,30 +682,37 @@ class ProductCatalogViewModel : ViewModel() {
         _uiState.update { currentState ->
             val newCategory =
                 if (currentState.selectedCategory == category) null else category
-            currentState.copy(
-                selectedCategory = newCategory,
-                products = filterProducts(
-                    searchQuery = currentState.searchQuery,
-                    showOnlyInStock = currentState.showOnlyInStock,
-                    selectedCategory = newCategory
-                ),
-                hasActiveFilters = hasActiveFilters(
-                    searchQuery = currentState.searchQuery,
-                    showOnlyInStock = currentState.showOnlyInStock,
-                    selectedCategory = newCategory
-                )
-            )
+            withUpdatedProducts(currentState.copy(selectedCategory = newCategory))
+        }
+    }
+
+    fun onToggleFavoritesFilter() {
+        _uiState.update { currentState ->
+            withUpdatedProducts(currentState.copy(showOnlyFavorites = !currentState.showOnlyFavorites))
+        }
+    }
+
+    fun onSortClick() {
+        _uiState.update { currentState ->
+            val newSortOrder = when (currentState.sortOrder) {
+                SortOrder.NONE -> SortOrder.PRICE_ASC
+                SortOrder.PRICE_ASC -> SortOrder.PRICE_DESC
+                SortOrder.PRICE_DESC -> SortOrder.NONE
+            }
+            withUpdatedProducts(currentState.copy(sortOrder = newSortOrder))
         }
     }
 
     fun onResetFilters() {
         _uiState.update { currentState ->
-            currentState.copy(
-                searchQuery = "",
-                showOnlyInStock = false,
-                selectedCategory = null,
-                products = allProducts,
-                hasActiveFilters = false
+            withUpdatedProducts(
+                currentState.copy(
+                    searchQuery = "",
+                    showOnlyInStock = false,
+                    selectedCategory = null,
+                    showOnlyFavorites = false,
+                    sortOrder = SortOrder.NONE
+                )
             )
         }
     }
@@ -729,9 +725,7 @@ class ProductCatalogViewModel : ViewModel() {
                 } else {
                     currentState.favoriteProductIds + productId
                 }
-            currentState.copy(
-                favoriteProductIds = newFavoriteIds
-            )
+            withUpdatedProducts(currentState.copy(favoriteProductIds = newFavoriteIds))
         }
     }
 }
@@ -758,6 +752,10 @@ fun ProductCatalogContainer(
         favoriteProductIds = uiState.favoriteProductIds,
         onFavoriteClick = viewModel::onFavoriteClick,
         onProductClick = onProductClick,
+        showOnlyFavorites = uiState.showOnlyFavorites,
+        onToggleFavoritesFilter = viewModel::onToggleFavoritesFilter,
+        sortOrder = uiState.sortOrder,
+        onSortClick = viewModel::onSortClick,
         modifier = modifier
     )
 }
@@ -777,6 +775,10 @@ fun ProductCatalogScreen(
     favoriteProductIds: List<Int>,
     onFavoriteClick: (Int) -> Unit,
     onProductClick: (ProductUi) -> Unit,
+    showOnlyFavorites: Boolean,
+    onToggleFavoritesFilter: () -> Unit,
+    sortOrder: SortOrder,
+    onSortClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -816,6 +818,28 @@ fun ProductCatalogScreen(
                         "Afficher tous les produits"
                     } else {
                         "Afficher uniquement les produits en stock"
+                    }
+                )
+            }
+        }
+        item {
+            Button(onClick = onToggleFavoritesFilter) {
+                Text(
+                    text = if (showOnlyFavorites) {
+                        "Désactiver le filtre favoris"
+                    } else {
+                        "Afficher uniquement les favoris"
+                    }
+                )
+            }
+        }
+        item {
+            OutlinedButton(onClick = onSortClick) {
+                Text(
+                    text = when (sortOrder) {
+                        SortOrder.NONE -> "Trier par prix"
+                        SortOrder.PRICE_ASC -> "Prix croissant ↑"
+                        SortOrder.PRICE_DESC -> "Prix décroissant ↓"
                     }
                 )
             }
@@ -959,7 +983,11 @@ fun ProductCatalogScreenLightPreview() {
             onResetFilters = {},
             favoriteProductIds = listOf(1),
             onFavoriteClick = {},
-            onProductClick = {}
+            onProductClick = {},
+            showOnlyFavorites = false,
+            onToggleFavoritesFilter = {},
+            sortOrder = SortOrder.NONE,
+            onSortClick = {}
         )
     }
 }
@@ -984,7 +1012,11 @@ fun ProductCatalogScreenDarkPreview() {
             onResetFilters = {},
             favoriteProductIds = listOf(2),
             onFavoriteClick = {},
-            onProductClick = {}
+            onProductClick = {},
+            showOnlyFavorites = false,
+            onToggleFavoritesFilter = {},
+            sortOrder = SortOrder.PRICE_ASC,
+            onSortClick = {}
         )
     }
 }
