@@ -36,7 +36,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.productexplorer.ui.theme.ProductExplorerTheme
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -812,36 +814,32 @@ fun ProductCatalogScreen(
             )
         }
         item {
-            Button(onClick = onToggleStockFilter) {
-                Text(
-                    text = if (showOnlyInStock) {
-                        "Afficher tous les produits"
-                    } else {
-                        "Afficher uniquement les produits en stock"
-                    }
-                )
-            }
-        }
-        item {
-            Button(onClick = onToggleFavoritesFilter) {
-                Text(
-                    text = if (showOnlyFavorites) {
-                        "Désactiver le filtre favoris"
-                    } else {
-                        "Afficher uniquement les favoris"
-                    }
-                )
-            }
-        }
-        item {
-            OutlinedButton(onClick = onSortClick) {
-                Text(
-                    text = when (sortOrder) {
-                        SortOrder.NONE -> "Trier par prix"
-                        SortOrder.PRICE_ASC -> "Prix croissant ↑"
-                        SortOrder.PRICE_DESC -> "Prix décroissant ↓"
-                    }
-                )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
+                    CategoryChip(
+                        label = "En stock",
+                        isSelected = showOnlyInStock,
+                        onClick = onToggleStockFilter
+                    )
+                }
+                item {
+                    CategoryChip(
+                        label = "Favoris",
+                        isSelected = showOnlyFavorites,
+                        onClick = onToggleFavoritesFilter
+                    )
+                }
+                item {
+                    CategoryChip(
+                        label = when (sortOrder) {
+                            SortOrder.NONE -> "Trier par prix"
+                            SortOrder.PRICE_ASC -> "Prix croissant"
+                            SortOrder.PRICE_DESC -> "Prix décroissant"
+                        },
+                        isSelected = sortOrder != SortOrder.NONE,
+                        onClick = onSortClick
+                    )
+                }
             }
         }
         item {
@@ -901,11 +899,21 @@ fun ProductListItem(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = product.title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = product.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
             Text(
                 text = product.brand,
                 style = MaterialTheme.typography.bodyMedium,
@@ -920,11 +928,6 @@ fun ProductListItem(
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = onClick) {
                 Text(text = "Voir le produit")
-            }
-            Button(onClick = onFavoriteClick) {
-                Text(
-                    text = if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris"
-                )
             }
         }
     }
