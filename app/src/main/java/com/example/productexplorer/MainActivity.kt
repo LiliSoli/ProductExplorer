@@ -36,13 +36,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.productexplorer.ui.theme.ProductExplorerTheme
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -600,66 +605,130 @@ fun DailyOfferBox(
     }
 }
 
+enum class SortOrder { NONE, PRICE_ASC, PRICE_DESC }
+
+data class ProductCatalogUiState(
+    val products: List<ProductUi> = emptyList(),
+    val categories: List<String> = emptyList(),
+    val searchQuery: String = "",
+    val showOnlyInStock: Boolean = false,
+    val selectedCategory: String? = null,
+    val hasActiveFilters: Boolean = false,
+    val favoriteProductIds: List<Int> = emptyList(),
+    val showOnlyFavorites: Boolean = false,
+    val sortOrder: SortOrder = SortOrder.NONE
+)
+
 class ProductCatalogViewModel : ViewModel() {
 
     private val allProducts: List<ProductUi> = sampleProducts()
-    val categories: List<String> = sampleCategories()
+    private val allCategories: List<String> = sampleCategories()
 
-    var searchQuery by mutableStateOf("")
-        private set
+    private val _uiState = MutableStateFlow(
+        ProductCatalogUiState(
+            products = allProducts,
+            categories = allCategories
+        )
+    )
+    val uiState: StateFlow<ProductCatalogUiState> = _uiState.asStateFlow()
 
-    var showOnlyInStock by mutableStateOf(false)
-        private set
-
-    var favoriteProductIds by mutableStateOf(listOf<Int>())
-        private set
-
-    var selectedCategory by mutableStateOf<String?>(null)
-        private set
-
-    val filteredProducts: List<ProductUi>
-        get() = allProducts.filter { product ->
+    private fun filterProducts(state: ProductCatalogUiState): List<ProductUi> {
+        val filtered = allProducts.filter { product ->
             val matchesSearch =
-                product.title.contains(searchQuery, ignoreCase = true) ||
-                        product.brand.contains(searchQuery, ignoreCase = true) ||
-                        product.category.contains(searchQuery, ignoreCase = true)
-
+                product.title.contains(state.searchQuery, ignoreCase = true) ||
+                        product.brand.contains(state.searchQuery, ignoreCase = true) ||
+                        product.category.contains(state.searchQuery, ignoreCase = true)
             val matchesStock =
-                !showOnlyInStock || product.stock > 0
-
+                !state.showOnlyInStock || product.stock > 0
             val matchesCategory =
-                selectedCategory == null || product.category == selectedCategory
-
-            matchesSearch && matchesStock && matchesCategory
+                state.selectedCategory == null || product.category == state.selectedCategory
+            val matchesFavorite =
+                !state.showOnlyFavorites || state.favoriteProductIds.contains(product.id)
+            matchesSearch && matchesStock && matchesCategory && matchesFavorite
         }
-
-    val hasActiveFilters: Boolean
-        get() = searchQuery.isNotEmpty() || showOnlyInStock || selectedCategory != null
-
-
-    fun onResetFilters() {
-        searchQuery = ""
-        showOnlyInStock = false
-        selectedCategory = null
+        return when (state.sortOrder) {
+            SortOrder.NONE -> filtered
+            SortOrder.PRICE_ASC -> filtered.sortedBy { it.price }
+            SortOrder.PRICE_DESC -> filtered.sortedByDescending { it.price }
+        }
     }
+
+    private fun hasActiveFilters(state: ProductCatalogUiState): Boolean {
+        return state.searchQuery.isNotEmpty() ||
+                state.showOnlyInStock ||
+                state.selectedCategory != null ||
+                state.showOnlyFavorites ||
+                state.sortOrder != SortOrder.NONE
+    }
+
+    private fun withUpdatedProducts(state: ProductCatalogUiState): ProductCatalogUiState {
+        return state.copy(
+            products = filterProducts(state),
+            hasActiveFilters = hasActiveFilters(state)
+        )
+    }
+
     fun onSearchQueryChange(newValue: String) {
-        searchQuery = newValue
+        _uiState.update { currentState ->
+            withUpdatedProducts(currentState.copy(searchQuery = newValue))
+        }
     }
 
     fun onToggleStockFilter() {
-        showOnlyInStock = !showOnlyInStock
-    }
-
-    fun onFavoriteClick(productId: Int) {
-        favoriteProductIds = if (favoriteProductIds.contains(productId)) {
-            favoriteProductIds - productId
-        } else {
-            favoriteProductIds + productId
+        _uiState.update { currentState ->
+            withUpdatedProducts(currentState.copy(showOnlyInStock = !currentState.showOnlyInStock))
         }
     }
 
     fun onCategoryClick(category: String) {
-        selectedCategory = if (selectedCategory == category) null else category
+        _uiState.update { currentState ->
+            val newCategory =
+                if (currentState.selectedCategory == category) null else category
+            withUpdatedProducts(currentState.copy(selectedCategory = newCategory))
+        }
+    }
+
+    fun onToggleFavoritesFilter() {
+        _uiState.update { currentState ->
+            withUpdatedProducts(currentState.copy(showOnlyFavorites = !currentState.showOnlyFavorites))
+        }
+    }
+
+    fun onSortClick() {
+        _uiState.update { currentState ->
+            val newSortOrder = when (currentState.sortOrder) {
+                SortOrder.NONE -> SortOrder.PRICE_ASC
+                SortOrder.PRICE_ASC -> SortOrder.PRICE_DESC
+                SortOrder.PRICE_DESC -> SortOrder.NONE
+            }
+            withUpdatedProducts(currentState.copy(sortOrder = newSortOrder))
+        }
+    }
+
+    fun onResetFilters() {
+        _uiState.update { currentState ->
+            withUpdatedProducts(
+                currentState.copy(
+                    searchQuery = "",
+                    showOnlyInStock = false,
+                    selectedCategory = null,
+                    showOnlyFavorites = false,
+                    sortOrder = SortOrder.NONE
+                )
+            )
+        }
+    }
+
+    fun onFavoriteClick(productId: Int) {
+        _uiState.update { currentState ->
+            val newFavoriteIds =
+                if (currentState.favoriteProductIds.contains(productId)) {
+                    currentState.favoriteProductIds - productId
+                } else {
+                    currentState.favoriteProductIds + productId
+                }
+            withUpdatedProducts(currentState.copy(favoriteProductIds = newFavoriteIds))
+        }
     }
 }
 
@@ -669,20 +738,26 @@ fun ProductCatalogContainer(
     modifier: Modifier = Modifier,
     viewModel: ProductCatalogViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     ProductCatalogScreen(
-        products = viewModel.filteredProducts,
-        categories = viewModel.categories,
-        searchQuery = viewModel.searchQuery,
+        products = uiState.products,
+        categories = uiState.categories,
+        searchQuery = uiState.searchQuery,
         onSearchQueryChange = viewModel::onSearchQueryChange,
-        showOnlyInStock = viewModel.showOnlyInStock,
+        showOnlyInStock = uiState.showOnlyInStock,
         onToggleStockFilter = viewModel::onToggleStockFilter,
-        selectedCategory = viewModel.selectedCategory,
+        selectedCategory = uiState.selectedCategory,
         onCategoryClick = viewModel::onCategoryClick,
-        hasActiveFilters = viewModel.hasActiveFilters,
+        hasActiveFilters = uiState.hasActiveFilters,
         onResetFilters = viewModel::onResetFilters,
-        favoriteProductIds = viewModel.favoriteProductIds,
+        favoriteProductIds = uiState.favoriteProductIds,
         onFavoriteClick = viewModel::onFavoriteClick,
         onProductClick = onProductClick,
+        showOnlyFavorites = uiState.showOnlyFavorites,
+        onToggleFavoritesFilter = viewModel::onToggleFavoritesFilter,
+        sortOrder = uiState.sortOrder,
+        onSortClick = viewModel::onSortClick,
         modifier = modifier
     )
 }
@@ -702,6 +777,10 @@ fun ProductCatalogScreen(
     favoriteProductIds: List<Int>,
     onFavoriteClick: (Int) -> Unit,
     onProductClick: (ProductUi) -> Unit,
+    showOnlyFavorites: Boolean,
+    onToggleFavoritesFilter: () -> Unit,
+    sortOrder: SortOrder,
+    onSortClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -735,14 +814,32 @@ fun ProductCatalogScreen(
             )
         }
         item {
-            Button(onClick = onToggleStockFilter) {
-                Text(
-                    text = if (showOnlyInStock) {
-                        "Afficher tous les produits"
-                    } else {
-                        "Afficher uniquement les produits en stock"
-                    }
-                )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
+                    CategoryChip(
+                        label = "En stock",
+                        isSelected = showOnlyInStock,
+                        onClick = onToggleStockFilter
+                    )
+                }
+                item {
+                    CategoryChip(
+                        label = "Favoris",
+                        isSelected = showOnlyFavorites,
+                        onClick = onToggleFavoritesFilter
+                    )
+                }
+                item {
+                    CategoryChip(
+                        label = when (sortOrder) {
+                            SortOrder.NONE -> "Trier par prix"
+                            SortOrder.PRICE_ASC -> "Prix croissant"
+                            SortOrder.PRICE_DESC -> "Prix décroissant"
+                        },
+                        isSelected = sortOrder != SortOrder.NONE,
+                        onClick = onSortClick
+                    )
+                }
             }
         }
         item {
@@ -802,11 +899,21 @@ fun ProductListItem(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = product.title,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = product.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
             Text(
                 text = product.brand,
                 style = MaterialTheme.typography.bodyMedium,
@@ -821,11 +928,6 @@ fun ProductListItem(
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = onClick) {
                 Text(text = "Voir le produit")
-            }
-            Button(onClick = onFavoriteClick) {
-                Text(
-                    text = if (isFavorite) "Retirer des favoris" else "Ajouter aux favoris"
-                )
             }
         }
     }
@@ -884,7 +986,11 @@ fun ProductCatalogScreenLightPreview() {
             onResetFilters = {},
             favoriteProductIds = listOf(1),
             onFavoriteClick = {},
-            onProductClick = {}
+            onProductClick = {},
+            showOnlyFavorites = false,
+            onToggleFavoritesFilter = {},
+            sortOrder = SortOrder.NONE,
+            onSortClick = {}
         )
     }
 }
@@ -909,7 +1015,11 @@ fun ProductCatalogScreenDarkPreview() {
             onResetFilters = {},
             favoriteProductIds = listOf(2),
             onFavoriteClick = {},
-            onProductClick = {}
+            onProductClick = {},
+            showOnlyFavorites = false,
+            onToggleFavoritesFilter = {},
+            sortOrder = SortOrder.PRICE_ASC,
+            onSortClick = {}
         )
     }
 }
